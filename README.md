@@ -4,7 +4,9 @@
 
 Abra o seu terminal (no VSCode ou de sua preferência) e execute o comando abaixo para baixar o projeto.
 
-`git clone https://github.com/Yelly-Mkt/Site-Yelly.git`
+```bash
+  git clone https://github.com/Yelly-Mkt/Site-Yelly.git
+```
 
 
 
