@@ -1,95 +1,205 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+'use client'
+import { useState } from "react";
+import Head from 'next/head';
+import styles from './page.module.css';
+
+// Interface para tipar os dados que vêm da sua API Java
+interface ResultadoOrdenacao {
+  comparacoes: number;
+  movimentacoes: number;
+  tempoExecucaoMs: number;
+  vetorOrdenado: number[]; 
+}
+
+// Interface para tipar o estado de resultado completo
+interface ResultadoCompleto extends ResultadoOrdenacao {
+  vetorOriginal: number[];
+}
 
 export default function Home() {
-  return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol>
-          <li>
-            Get started by editing <code>src/app/page.tsx</code>.
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+  const [fileName, setFileName] = useState<string>('');
+  const [randomCount, setRandomCount] = useState<number>(10); 
+  const [inputNumbers, setInputNumbers] = useState<string>('');
+  const [result, setResult] = useState<ResultadoCompleto | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string>('');
+  const [selectedAlgorithm, setSelectedAlgorithm] = useState<string>('quick');
 
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
+  const handleLoadFile = async () => {
+    setIsLoading(true);
+    setError('');
+    
+    try {
+      const response = await fetch('http://localhost:8080/api/sort/load-file', {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain' },
+          body: fileName,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Erro ao carregar o arquivo: Status ${response.status}`);
+      }
+
+      const numbers: number[] = await response.json();
+      setInputNumbers(numbers.join(', '));
+      setResult(null); 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleGenerateRandom = async () => {
+    setIsLoading(true);
+    setError('');
+    
+    try {
+      const response = await fetch(`http://localhost:8080/api/sort/generate-random/${randomCount}`);
+
+      if (!response.ok) {
+        throw new Error(`Erro ao gerar números: Status ${response.status}`);
+      }
+
+      const numbers: number[] = await response.json();
+      setInputNumbers(numbers.join(', '));
+      setResult(null);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSort = async () => {
+    setIsLoading(true);
+    setError('');
+    
+    // Converte a string do input para um array de inteiros
+    const numbersArray: number[] = inputNumbers
+      .split(',')
+      .map((str) => parseInt(str.trim(), 10))
+      .filter((num) => !isNaN(num));
+
+    if (numbersArray.length === 0) {
+      setError('Por favor, carregue ou gere um vetor antes de ordenar.');
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      const response = await fetch(`http://localhost:8080/api/sort/${selectedAlgorithm}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(numbersArray),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Erro na API: Status ${response.status}`);
+      }
+
+      const data: ResultadoOrdenacao = await response.json();
+      setResult({
+        ...data,
+        vetorOriginal: numbersArray,
+      });
+      setInputNumbers(data.vetorOrdenado.join(', '));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (err: any) {
+      setError(`Ocorreu um erro: ${err.message}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <main className={styles.main}>
+      <h1>Algoritmos de Ordenação</h1>
+    
+      <div className={styles.card}>
+
+        {/* Seção de Carregar Arquivo */}
+        <div className={styles.inputContainer}>
+            <input
+                type="text"
+                value={fileName}
+                onChange={(e) => setFileName(e.target.value)}
+                placeholder="Nome do arquivo (ex: numeros.txt)"
             />
-            Deploy now
-          </a>
-          <a
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.secondary}
-          >
-            Read our docs
-          </a>
+            <button onClick={handleLoadFile} disabled={isLoading}>Ler Arquivo</button>
         </div>
-      </main>
-      <footer className={styles.footer}>
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
+
+        {/* Seção de Gerar Aleatórios */}
+         <div className={styles.inputContainer}>
+          <input
+              type="number"
+              value={randomCount}
+              onChange={(e) => setRandomCount(Number(e.target.value))}
+              placeholder="Quant. de números"
           />
-          Learn
-        </a>
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+          <button onClick={handleGenerateRandom} disabled={isLoading}>Gerar Aleatórios</button>
+        </div>
+
+        
+        <div className={styles.inputContainer}>
+            <select name="algoritmo" onChange={(e) => setSelectedAlgorithm(e.target.value)} value={selectedAlgorithm}>
+              <option value="insersao">Inserção Direta</option>  
+              <option value="selecao">Seleção Direta</option>  
+              <option value="bubble">Bubble Sort</option>  
+              <option value="shaker">Shaker Sort</option>
+              <option value="shell">Shell Sort</option>       
+              <option value="heap">Heap Sort</option>
+              <option value="quick">Quick Sort</option>      
+            </select>
+
+          <button onClick={handleSort} disabled={isLoading}>
+            Ordenar
+          </button>
+        </div>
+
+      </div>
+      
+      <div className={styles.card}>
+        
+
+        {result ? (
+          <div className={styles.resultsContainer}>
+            <h2>Resultados da Ordenação</h2>
+            <p className={styles.resultado}>
+              **Comparações:** {result.comparacoes}
+            </p>
+            <p className={styles.resultado}>
+              **Movimentações:** {result.movimentacoes}
+            </p>
+            <p className={styles.resultado}>
+              **Tempo de Execução:** {result.tempoExecucaoMs}ms
+            </p>
+            <p className={styles.resultado}>
+              **Vetor Original:** {result.vetorOriginal.join(', ')}
+            </p>
+            <p className={styles.resultado}>
+              **Vetor Ordenado:** {result.vetorOrdenado.join(', ')}
+            </p>
+            
+          </div>
+        ): (
+          <>
+            <p>Números Atuais: **{inputNumbers}**</p>
+            {isLoading && <p>Processando...</p>}
+            {error && <p className={styles.error}>{error}</p>}
+          </>
+
+        )}
+        
+        
+        
+        
+      </div>
+
+    </main>
   );
 }
