@@ -1,6 +1,5 @@
 'use client'
 import { useState } from "react";
-import Head from 'next/head';
 import styles from './page.module.css';
 
 // Interface para tipar os dados que vêm da sua API Java
@@ -17,7 +16,7 @@ interface ResultadoCompleto extends ResultadoOrdenacao {
 }
 
 export default function Home() {
-  const [fileName, setFileName] = useState<string>('');
+  const [file, setFile] = useState<File | null>(null);
   const [randomCount, setRandomCount] = useState<number>(10); 
   const [inputNumbers, setInputNumbers] = useState<string>('');
   const [result, setResult] = useState<ResultadoCompleto | null>(null);
@@ -25,15 +24,31 @@ export default function Home() {
   const [error, setError] = useState<string>('');
   const [selectedAlgorithm, setSelectedAlgorithm] = useState<string>('quick');
 
-  const handleLoadFile = async () => {
+  
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) =>{
+    setFile(e.target.files?.[0] || null);
+  }
+
+  
+  // A função handleLoadFile agora só precisa do evento do formulário
+  const handleLoadFile = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault(); 
+
+    if(!file){
+      setError('Por favor, selecione um arquivo.')
+      return;
+    }
+
     setIsLoading(true);
-    setError('');
+
+    const formData = new FormData();
+    formData.append('file', file);
     
     try {
       const response = await fetch('http://localhost:8080/api/sort/load-file', {
           method: 'POST',
-          headers: { 'Content-Type': 'text/plain' },
-          body: fileName,
+          body: formData,
       });
 
       if (!response.ok) {
@@ -43,7 +58,8 @@ export default function Home() {
       const numbers: number[] = await response.json();
       setInputNumbers(numbers.join(', '));
       setResult(null); 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -93,7 +109,7 @@ export default function Home() {
       const response = await fetch(`http://localhost:8080/api/sort/${selectedAlgorithm}`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json', // <<< ADICIONE ESTA LINHA!
         },
         body: JSON.stringify(numbersArray),
       });
@@ -123,15 +139,14 @@ export default function Home() {
       <div className={styles.card}>
 
         {/* Seção de Carregar Arquivo */}
-        <div className={styles.inputContainer}>
-            <input
-                type="text"
-                value={fileName}
-                onChange={(e) => setFileName(e.target.value)}
-                placeholder="Nome do arquivo (ex: numeros.txt)"
-            />
-            <button onClick={handleLoadFile} disabled={isLoading}>Ler Arquivo</button>
-        </div>
+        <form onSubmit={handleLoadFile}>
+          <div className={styles.inputContainer}>
+              <input type="file" onChange={handleFileChange} />
+              <button type="submit" disabled={isLoading}>Ler Arquivo</button>
+          </div>
+        </form>
+
+        
 
         {/* Seção de Gerar Aleatórios */}
          <div className={styles.inputContainer}>
